@@ -1,1 +1,0 @@
-No basic newsletter generated

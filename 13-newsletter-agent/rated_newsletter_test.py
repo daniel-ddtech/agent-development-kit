@@ -68,65 +68,124 @@ def fetch_futuretools_news(days=7):
         import requests
         from bs4 import BeautifulSoup
         from datetime import datetime, timedelta
+        import re
+        from urllib.parse import urlparse, parse_qs
         
         # Get the current date and the date 'days' days ago
         end_date = datetime.now()
         start_date = end_date - timedelta(days=days)
         
+        print(f"  Fetching news from FutureTools.io for the last {days} days...")
+        
         # Fetch the FutureTools.io news page
-        response = requests.get("https://www.futuretools.io/news")
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        response = requests.get("https://www.futuretools.io/news", headers=headers)
         if response.status_code != 200:
-            print(f"Error fetching FutureTools.io: {response.status_code}")
+            print(f"  Error fetching FutureTools.io: {response.status_code}")
             return []
         
         # Parse the HTML
         soup = BeautifulSoup(response.text, 'html.parser')
         
-        # Find all news articles
+        # Find all news articles - they're typically in card elements
         articles = []
-        news_links = soup.find_all('a', href=True)
+        news_cards = soup.find_all('div', class_=re.compile('card|news-item|post'))
         
-        for link in news_links:
-            # Skip navigation links
-            if not link.text or link.text in ['Terms Of Use', 'Privacy Policy', 'Built by Matt Wolfe']:
-                continue
+        if not news_cards:
+            # If we can't find cards, fall back to looking for links
+            news_links = soup.find_all('a', href=True)
+            
+            for link in news_links:
+                # Skip navigation links and empty links
+                if not link.text or link.text.strip() in ['Terms Of Use', 'Privacy Policy', 'Built by Matt Wolfe', '']:
+                    continue
+                    
+                # Extract article information
+                title = link.text.strip()
+                url = link['href']
                 
-            # Extract article information
-            title = link.text.strip()
-            url = link['href']
-            
-            # Extract source from URL
-            source = "Unknown"
-            if "utm_source=futuretools.io" in url:
-                # Extract the base URL
-                base_url = url.split("?")[0]
-                # Try to extract domain
-                try:
-                    from urllib.parse import urlparse
-                    domain = urlparse(base_url).netloc
-                    source = domain
-                except:
-                    source = "FutureTools.io"
-            
-            # We don't have exact publish dates from the scrape, so we'll assume all are recent
-            # and rely on our curation to filter for relevance
-            article = {
-                "title": title,
-                "url": url,
-                "source": source,
-                "published": end_date.strftime("%Y-%m-%d"),
-                "summary": f"From FutureTools.io: {title}",
-                "content": "",
-                "keywords": ["ai", "artificial intelligence", "machine learning"]
-            }
-            
-            articles.append(article)
+                # Only process links that look like news articles
+                if not ("utm_source=futuretools.io" in url or "/news/" in url):
+                    continue
+                
+                # Create article object
+                article = create_article_object(title, url, end_date)
+                if article:
+                    articles.append(article)
+        else:
+            # Process card elements
+            for card in news_cards:
+                # Find the title and link
+                link = card.find('a', href=True)
+                if not link:
+                    continue
+                    
+                title = link.text.strip()
+                if not title:
+                    # Try to find a heading element
+                    heading = card.find(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
+                    if heading:
+                        title = heading.text.strip()
+                
+                url = link['href']
+                
+                # Create article object
+                article = create_article_object(title, url, end_date)
+                if article:
+                    articles.append(article)
         
-        print(f"Found {len(articles)} articles from FutureTools.io")
+        print(f"  Found {len(articles)} articles from FutureTools.io")
         return articles
     except Exception as e:
-        print(f"Error scraping FutureTools.io: {str(e)}")
+        print(f"  Error scraping FutureTools.io: {str(e)}")
         return []
+
+def create_article_object(title, url, date):
+    """
+    Create an article object from extracted information
+    
+    Args:
+        title: Article title
+        url: Article URL
+        date: Current date
+        
+    Returns:
+        Article dictionary or None if invalid
+    """
+    if not title or not url:
+        return None
+        
+    # Extract source from URL
+    source = "FutureTools.io"
+    if "utm_source=futuretools.io" in url:
+        # Extract the original source URL
+        base_url = url.split("?")[0]
+        # Try to extract domain
+        try:
+            from urllib.parse import urlparse
+            domain = urlparse(base_url).netloc
+            if domain:
+                source = domain
+        except:
+            pass
+    
+    # Generate a unique ID for the article
+    article_id = f"futuretools_{hash(url)}"
+    
+    # Create the article object
+    article = {
+        "id": article_id,
+        "title": title,
+        "url": url,
+        "source": source,
+        "published": date.strftime("%Y-%m-%d"),
+        "summary": f"From FutureTools.io: {title}",
+        "keywords": ["ai", "artificial intelligence", "machine learning", "generative ai"]
+    }
+    
+    return article
 
 def main():
     # Parse command-line arguments
@@ -207,20 +266,31 @@ def main():
     
     # Add FutureTools articles to the state
     if futuretools_articles:
-        all_articles = context.state.get("rss_articles", []) + futuretools_articles
-        context.state["rss_articles"] = all_articles
+        # Add to rss_articles
+        all_rss_articles = context.state.get("rss_articles", []) + futuretools_articles
+        context.state["rss_articles"] = all_rss_articles
+        
+        # Also add to the main articles list
+        existing_ids = {article.get("id", article.get("url", "")) for article in context.state.get("articles", [])}
+        for article in futuretools_articles:
+            article_id = article.get("id", article.get("url", ""))
+            if article_id not in existing_ids:
+                context.state.get("articles", []).append(article)
+                existing_ids.add(article_id)
+        
         print(f"  Added {len(futuretools_articles)} articles from FutureTools.io")
     
-    total_articles = len(context.state.get("rss_articles", []))
+    total_articles = len(context.state.get("articles", []))
     print(f"  Total articles fetched: {total_articles}")
     print(f"  Time period: Last {days_to_fetch} days")
     
-    # Limit to 20 articles for testing
-    print("  Limiting to 20 articles for testing...")
-    all_articles = context.state.get("articles", [])
-    limited_articles = all_articles[:20]
-    context.state["articles"] = limited_articles
-    print(f"  Limited to {len(limited_articles)} articles for testing")
+    # Limit to max_articles for processing
+    if total_articles > args.max_articles:
+        print(f"  Limiting to {args.max_articles} articles for processing...")
+        all_articles = context.state.get("articles", [])
+        limited_articles = all_articles[:args.max_articles]
+        context.state["articles"] = limited_articles
+        print(f"  Limited to {len(limited_articles)} articles for processing")
     
     # Step 2: Curate articles using LLM
     print("\nStep 2: Curating articles with LLM...")

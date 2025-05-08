@@ -1,1 +1,0 @@
-No bullet point newsletter generated
