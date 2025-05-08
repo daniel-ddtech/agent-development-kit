@@ -1,19 +1,22 @@
 import os
 import json
+import argparse
 from datetime import datetime
 import feedparser
 from bs4 import BeautifulSoup
 import requests
 import google.generativeai as genai
 from dotenv import load_dotenv
-
-# Import our custom tools
+from google.adk.tools.tool_context import ToolContext
 from newsletter_agent.rss_tools import fetch_rss_articles
 from newsletter_agent.curator_tools import curate_articles, get_trending_topics
 from newsletter_agent.summarizer_tools import summarize_articles
 from newsletter_agent.category_tools import categorize_articles
 from newsletter_agent.llm_formatter import generate_newsletter_with_llm
 from newsletter_agent.rating_system import rate_articles, add_ratings_to_newsletter
+from newsletter_agent.source_discovery import discover_sources, evaluate_sources, recommend_sources
+from newsletter_agent.llm_curator import curate_with_llm, categorize_with_llm
+from newsletter_agent.pure_newsletter import generate_pure_newsletter, add_sources_to_pure_newsletter
 
 # Load environment variables
 load_dotenv()
@@ -126,6 +129,33 @@ def fetch_futuretools_news(days=7):
         return []
 
 def main():
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description="AI in Gaming Newsletter Generator")
+    parser.add_argument(
+        "--days", 
+        type=int, 
+        default=7,
+        help="Number of days to look back for articles (default: 7)"
+    )
+    parser.add_argument(
+        "--discover-sources", 
+        action="store_true",
+        help="Discover and evaluate new content sources before generating the newsletter"
+    )
+    parser.add_argument(
+        "--max-articles", 
+        type=int, 
+        default=15,
+        help="Maximum number of articles to include in the newsletter (default: 15)"
+    )
+    parser.add_argument(
+        "--output-format", 
+        choices=["markdown", "html", "json", "all"],
+        default="all",
+        help="Output format for the newsletter (default: all)"
+    )
+    args = parser.parse_args()
+    
     print("\n=== AI in Gaming Newsletter Generator (With Content Rating) ===\n")
     
     # Initialize tool context with initial state
@@ -137,12 +167,37 @@ def main():
         "date": datetime.now().strftime("%Y-%m-%d"),
     })
     
-    # Step 1: Fetch articles from RSS feeds and FutureTools.io (last 7 days only)
-    print("Step 1: Fetching articles from sources (last 7 days)...")
-    days_to_fetch = 7  # Explicitly set to fetch only the last week
+    # Optional: Discover new sources
+    if args.discover_sources:
+        print("\n=== Source Discovery Agent ===\n")
+        print("Step 0.1: Discovering new content sources...")
+        discover_result = discover_sources(context)
+        print(f"  {discover_result['message']}")
+        
+        print("\nStep 0.2: Evaluating discovered sources...")
+        evaluate_result = evaluate_sources(context)
+        if evaluate_result['status'] == "success":
+            print(f"  {evaluate_result['message']}")
+            print("  Top sources:")
+            for i, source in enumerate(evaluate_result.get('sources', [])[:3], 1):
+                print(f"    {i}. {source['url']} - Score: {source['overall_score']:.2f}")
+        
+        print("\nStep 0.3: Recommending high-quality sources...")
+        recommend_result = recommend_sources(context)
+        if recommend_result['status'] == "success":
+            print(f"  {recommend_result['message']}")
+            # Update RSS feeds with recommended sources
+            if recommend_result.get('recommended_feeds'):
+                context.state["rss_feeds"] = list(set(context.state.get("rss_feeds", []) + 
+                                              recommend_result.get('recommended_feeds', [])))
+                print(f"  Updated RSS feeds list with {len(recommend_result.get('recommended_feeds', []))} new sources")
+    
+    # Step 1: Fetch articles from RSS feeds and FutureTools.io
+    print("\nStep 1: Fetching articles from sources (last {args.days} days)...")
+    days_to_fetch = args.days
     
     # Fetch from RSS feeds
-    result = fetch_rss_articles(rss_feeds, days_to_fetch, context)
+    result = fetch_rss_articles(context.state.get("rss_feeds", rss_feeds), days_to_fetch, context)
     rss_article_count = len(context.state.get("rss_articles", []))
     print(f"  {result['message']}")
     
@@ -160,37 +215,55 @@ def main():
     print(f"  Total articles fetched: {total_articles}")
     print(f"  Time period: Last {days_to_fetch} days")
     
-    # Step 2: Curate articles
-    print("\nStep 2: Curating articles...")
+    # Limit to 20 articles for testing
+    print("  Limiting to 20 articles for testing...")
+    all_articles = context.state.get("articles", [])
+    limited_articles = all_articles[:20]
+    context.state["articles"] = limited_articles
+    print(f"  Limited to {len(limited_articles)} articles for testing")
+    
+    # Step 2: Curate articles using LLM
+    print("\nStep 2: Curating articles with LLM...")
     curation_criteria = {
-        "keywords": [
-            "generative AI", "gen AI", "diffusion model", "large language model", 
-            "AI in games", "game development", "NPC", "character behavior",
-            "funding", "investment", "regulation", "policy"
+        "focus_areas": [
+            "Generative AI in gaming (primary focus)",
+            "AI-powered game development tools and assets",
+            "AI NPCs and character behavior in games",
+            "Procedural generation and content creation for games",
+            "Major generative AI model releases and updates",
+            "Business and funding in AI gaming",
+            "AI ethics and policy in gaming"
         ],
-        "min_score": 2,  # Lower threshold to ensure we get some results
-        "max_articles": 15  # Limit to 15 articles to stay within API quota
+        "max_articles": args.max_articles  # Use the command-line parameter
     }
-    result = curate_articles(curation_criteria, context)
+    result = curate_with_llm(curation_criteria, context)
     print(f"  {result['message']}")
+    print("  Sources used:")
+    for source, count in result.get('source_counts', {}).items():
+        print(f"    - {source}: {count} articles")
+        
+    # Store curated articles in context
+    context.state["curated_articles"] = result.get("curated_articles", [])
     
     # Step 3: Identify trending topics
     print("\nStep 3: Identifying trending topics...")
     result = get_trending_topics(context)
     print(f"  {result['message']}")
-    if result['topics']:
+    if result.get('topics'):
         print("  Trending topics:")
         for topic in result['topics']:
             print(f"    - {topic['topic'].replace('_', ' ').title()}")
+    else:
+        print("  No trending topics identified.")
     
     # Step 4: Generate summaries
     print("\nStep 4: Generating article summaries...")
     result = summarize_articles("professional", context)
     print(f"  {result['message']}")
     
-    # Step 5: Categorize articles
-    print("\nStep 5: Categorizing articles...")
-    result = categorize_articles(context)
+    # Step 5: Categorize articles with LLM
+    print("\nStep 5: Categorizing articles with LLM...")
+    result = categorize_with_llm(context)
     print(f"  {result['message']}")
     print("  Categories:")
     for category, count in result['category_counts'].items():
@@ -213,17 +286,167 @@ def main():
     result = generate_newsletter_with_llm(context)
     print(f"  {result['message']}")
     
-    # Step 8: Add ratings to newsletter
-    print("\nStep 8: Adding ratings to newsletter...")
+    # Step 7.1: Generate pure newsletter without ratings
+    print("\nStep 7.1: Generating pure newsletter without ratings...")
+    result = generate_pure_newsletter(context)
+    print(f"  {result['message']}")
+    
+    # Step 7.2: Add ratings to the newsletter
+    print("\nStep 7.2: Adding ratings to newsletter...")
     result = add_ratings_to_newsletter(context)
     print(f"  {result['message']}")
     
-    # Save the newsletter to a file
-    newsletter_file = f"newsletter_rated_{datetime.now().strftime('%Y%m%d')}.md"
-    with open(newsletter_file, "w") as f:
-        f.write(context.state.get("rated_newsletter", "No newsletter generated"))
+    # Step 7.5: Add sources information to the newsletter
+    print("\nStep 7.5: Adding sources information to newsletter...")
     
-    print(f"\nRated newsletter saved to {newsletter_file}")
+    # Get all sources used in this newsletter
+    used_sources = set()
+    for article in context.state.get("articles", []):
+        source = article.get("source", "Unknown")
+        if source != "Unknown":
+            used_sources.add(source)
+    
+    # Get recommended sources if available
+    recommended_sources = context.state.get("recommended_feeds", [])
+    
+    # Format sources section
+    sources_section = "\n\n## 📚 Sources\n\n"
+    
+    # Add used sources
+    if used_sources:
+        sources_section += "### Sources Used in This Newsletter\n\n"
+        for i, source in enumerate(sorted(used_sources), 1):
+            sources_section += f"{i}. **{source}**\n"
+    
+    # Add recommended sources if available
+    if recommended_sources:
+        sources_section += "\n### Recommended New Sources\n\n"
+        sources_section += "These sources were discovered by our AI and may provide valuable content for future newsletters:\n\n"
+        for i, source in enumerate(recommended_sources[:5], 1):  # Limit to top 5
+            # Extract domain name for cleaner display
+            try:
+                from urllib.parse import urlparse
+                domain = urlparse(source).netloc
+                sources_section += f"{i}. **{domain}** - [Visit]({source})\n"
+            except:
+                sources_section += f"{i}. {source}\n"
+    
+    # Add to all newsletter versions
+    for version in ["rated_newsletter", "llm_newsletter", "bullet_newsletter", "basic_newsletter"]:
+        if version in context.state:
+            context.state[version] += sources_section
+    
+    # Add sources to pure newsletter
+    result = add_sources_to_pure_newsletter(context)
+    print(f"  {result['message']}")
+    
+    print(f"  Added information about {len(used_sources)} used sources and {len(recommended_sources)} recommended sources")
+    
+    # Step 8: Save the newsletter to files based on output format
+    print("\nStep 8: Saving newsletter to file...")
+    today_date = datetime.now().strftime("%Y%m%d")
+    
+    # Function to convert markdown to HTML
+    def markdown_to_html(markdown_content):
+        try:
+            import markdown
+            html_content = markdown.markdown(markdown_content)
+            
+            # Add basic HTML structure and styling
+            html = f"""
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>AI & Gaming Newsletter</title>
+                <style>
+                    body {{ font-family: Arial, sans-serif; line-height: 1.6; max-width: 900px; margin: 0 auto; padding: 20px; }}
+                    h1 {{ color: #1E88E5; border-bottom: 2px solid #1E88E5; padding-bottom: 10px; }}
+                    h2 {{ color: #7E57C2; margin-top: 1.5rem; border-bottom: 1px solid #ddd; padding-bottom: 5px; }}
+                    h3 {{ color: #43A047; }}
+                    .star-filled {{ color: #FFD700; }}
+                    .star-empty {{ color: #CCCCCC; }}
+                </style>
+            </head>
+            <body>
+                {html_content}
+            </body>
+            </html>
+            """
+            
+            # Replace star ratings with colored stars
+            html = html.replace("★", '<span class="star-filled">★</span>')
+            html = html.replace("☆", '<span class="star-empty">☆</span>')
+            
+            return html
+        except ImportError:
+            print("  Warning: 'markdown' package not installed. Using basic HTML conversion.")
+            # Very basic markdown to HTML conversion
+            html = markdown_content
+            html = html.replace("\n\n", "</p><p>")
+            html = html.replace("# ", "<h1>")
+            html = html.replace("## ", "<h2>")
+            html = html.replace("### ", "<h3>")
+            html = "<p>" + html + "</p>"
+            return html
+    
+    # Save based on output format
+    if args.output_format in ["markdown", "all"]:
+        # Save the rated newsletter
+        rated_filename = f"newsletter_rated_{today_date}.md"
+        with open(rated_filename, "w") as f:
+            f.write(context.state.get("rated_newsletter", "No newsletter generated"))
+        print(f"  Saved rated newsletter to {rated_filename}")
+        
+        # Save the LLM newsletter
+        llm_filename = f"newsletter_llm_{today_date}.md"
+        with open(llm_filename, "w") as f:
+            f.write(context.state.get("llm_newsletter", "No LLM newsletter generated"))
+        print(f"  Saved LLM newsletter to {llm_filename}")
+        
+        # Save the bullet point newsletter
+        bullet_filename = f"newsletter_bullets_{today_date}.md"
+        with open(bullet_filename, "w") as f:
+            f.write(context.state.get("bullet_newsletter", "No bullet point newsletter generated"))
+        print(f"  Saved bullet point newsletter to {bullet_filename}")
+        
+        # Save the basic newsletter
+        basic_filename = f"newsletter_{today_date}.md"
+        with open(basic_filename, "w") as f:
+            f.write(context.state.get("basic_newsletter", "No basic newsletter generated"))
+        print(f"  Saved basic newsletter to {basic_filename}")
+    
+    if args.output_format in ["html", "all"]:
+        # Convert and save as HTML
+        rated_html_filename = f"newsletter_rated_{today_date}.html"
+        with open(rated_html_filename, "w") as f:
+            f.write(markdown_to_html(context.state.get("rated_newsletter", "No newsletter generated")))
+        print(f"  Saved rated newsletter HTML to {rated_html_filename}")
+    
+    if args.output_format in ["json", "all"]:
+        # Save as JSON with all versions and metadata
+        json_filename = f"newsletter_{today_date}.json"
+        newsletter_data = {
+            "date": datetime.now().strftime("%Y-%m-%d"),
+            "versions": {
+                "rated": context.state.get("rated_newsletter", "No newsletter generated"),
+                "llm": context.state.get("llm_newsletter", "No LLM newsletter generated"),
+                "bullets": context.state.get("bullet_newsletter", "No bullet point newsletter generated"),
+                "basic": context.state.get("basic_newsletter", "No basic newsletter generated")
+            },
+            "metadata": {
+                "article_count": len(context.state.get("articles", [])),
+                "sources": list(set([a.get("source", "Unknown") for a in context.state.get("articles", [])])),
+                "trending_topics": context.state.get("trending_topics", []),
+                "categories": context.state.get("categories", {})
+            }
+        }
+        with open(json_filename, "w") as f:
+            json.dump(newsletter_data, f, indent=2)
+        print(f"  Saved newsletter data to {json_filename}")
+    
+    print("\nNewsletter generation complete!")
     
     # Print a sample of the newsletter
     print("\nNewsletter Preview:")

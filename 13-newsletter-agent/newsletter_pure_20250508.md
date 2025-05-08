@@ -35,25 +35,6 @@
 → Subscribe to get weekly dev-focused signals.*
 
 
-## 🌟 Content Quality Ratings
-
-### Category Ratings
-
-- **AI-powered game development tools and assets**: 3.2/5 ★★★☆☆
-- **🎮 Gaming & AI**: 3.3/5 ★★★☆☆
-- **Major generative AI model releases and updates**: 3.6/5 ★★★☆☆
-- **🧠 Major AI Models & Features**: 3.7/5 ★★★☆☆
-- **AI NPCs and character behavior in games**: 3.8/5 ★★★☆☆
-- **Business and funding in AI gaming**: 3.5/5 ★★★☆☆
-- **🔬 Breakthrough Tech & Regulation**: 3.2/5 ★★★☆☆
-- **💰 Business & Funding News**: 3.5/5 ★★★☆☆
-
-### Top Rated Articles
-
-1. **Griffin Gaming Partners leads $7M investment in Fuse Games** - GamesBeat News | VentureBeat (4.0/5 ★★★★☆)
-2. **How Deutsche Bahn redefines forecasting using Chronos models – Now available on Amazon Bedrock Marketplace** - AWS Machine Learning Blog (3.8/5 ★★★☆☆)
-3. **Asking chatbots for short answers can increase hallucinations, study finds** - AI News & Artificial Intelligence | TechCrunch (3.6/5 ★★★☆☆)
-
 
 ## 📚 Sources
 

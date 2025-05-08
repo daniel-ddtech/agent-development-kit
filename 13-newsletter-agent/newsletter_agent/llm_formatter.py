@@ -103,77 +103,120 @@ def generate_newsletter_with_llm(tool_context: ToolContext) -> dict:
     """
     print("--- Tool: generate_newsletter_with_llm called ---")
     
-    # Get categorized articles
-    categories = tool_context.state.get("categorized_articles", {})
+    # Get the categorized articles from the context
+    categorized_articles = tool_context.state.get("categorized_articles", [])
     
-    if not categories:
+    if not categorized_articles:
         return {
             "action": "generate_newsletter_with_llm",
             "status": "error",
             "message": "No categorized articles found. Please categorize articles first."
         }
     
-    # Format each category with LLM
-    for cat_id, category in categories.items():
-        if category["articles"]:
-            format_with_llm(category["articles"], category["title"], tool_context)
+    # Get trending topics
+    trending_topics = tool_context.state.get("trending_topics", [])
     
-    # Get the formatted categories
-    formatted_categories = tool_context.state.get("formatted_categories", {})
+    # Group articles by category
+    articles_by_category = {}
+    for article in categorized_articles:
+        categories = article.get("categories", [])
+        if categories:
+            category = categories[0]  # Use the first category
+            if category not in articles_by_category:
+                articles_by_category[category] = []
+            articles_by_category[category].append(article)
     
-    # Create the newsletter structure
-    current_date = datetime.now().strftime("%Y-%m-%d")
-    newsletter_structure = {
-        "title": "This Week in Generative AI 🤖 and Gaming 🎮",
-        "date": current_date,
-        "categories": formatted_categories,
-        "trending_topics": tool_context.state.get("trending_topics", [])
-    }
-    
-    # Generate the complete newsletter with LLM
+    # Create the prompt for the LLM using the bullet-point format
     prompt = f"""
-    You are a newsletter editor specializing in AI and gaming technology.
+    You are an expert newsletter writer specializing in AI and gaming. Create a professional weekly roundup newsletter using the following categorized articles and trending topics.
     
-    Create a complete newsletter using the following structure and content:
+    CATEGORIES AND ARTICLES:
+    {articles_by_category}
     
-    Title: {newsletter_structure['title']}
-    Date: {newsletter_structure['date']}
+    TRENDING TOPICS:
+    {trending_topics}
     
-    Categories and their bullet points:
-    {newsletter_structure['categories']}
+    INSTRUCTIONS:
+    Format the newsletter using EXACTLY this template structure:
     
-    Trending topics this week:
-    {[topic.get('topic', '').replace('_', ' ').title() for topic in newsletter_structure['trending_topics']]}
+    # This Week in Generative AI 🤖 and Gaming 🎮👇
+    *→ Each headline should be 6–12 words max for quick scanning.*
     
-    Format the newsletter in Markdown with:
-    1. A compelling title and date at the top
-    2. A brief introduction summarizing the key themes this week (2-3 sentences)
-    3. Each category with its emoji and bullet points
-    4. Proper spacing and formatting for readability
+    ---
     
-    Return ONLY the formatted newsletter in Markdown.
+    ## 🎮 Gaming & AI
+    <!-- Add headlines about AI in games, dev tools, content, engines -->
+    - [Company] emphasizes "human touch" amid rising AI usage
+    - [Studio] launches AI-generated game demo using internal model
+    - [Platform] adds procedural content generation support
+    - [Dev tool] integrates agent-based NPC design
+    - [Publisher] explores LLM-based dialogue systems in new title
+    
+    ---
+    
+    ## 🧠 Major AI Models & Features
+    <!-- Include major model releases, feature upgrades, dev APIs -->
+    - [Model name] outperforms competitors with fewer parameters
+    - [Startup] releases open-source model for code generation
+    - [API] now supports multi-turn prompt evaluation
+    - [Voice AI] launches server-based low-latency integration
+    - [Image tool] improves prompt handling for visuals
+    
+    ---
+    
+    ## 🔬 Breakthrough Tech & Regulation
+    <!-- Add news on hardware, robotics, policy, and ethics -->
+    - [Robotaxi] pilot begins in [location]
+    - [AI device] combines robotics with hydrogen engine tech
+    - [Court ruling] impacts model training transparency
+    - [Company] pauses hiring for roles replaced by AI
+    - [Watchdog] raises transparency concerns over model benchmarks
+    
+    ---
+    
+    ## 💰 Business & Funding News
+    <!-- Add funding rounds, M&A, product launches, and market moves -->
+    - [Startup] raises $XM for AI-native dev tooling
+    - [Big Tech] explores acquisition of AI hardware startup
+    - [New company] emerges from stealth with agent-focused platform
+    - [Platform] adds Pro+ pricing tier with new features
+    - [VC firm] backs agentic framework for enterprise apps
+    
+    ---
+    
+    *→ Thread and long-form summary coming later this week.
+    → Subscribe to get weekly dev-focused signals.*
+    
+    IMPORTANT INSTRUCTIONS:
+    1. Replace the placeholder text with ACTUAL content from the provided articles.
+    2. Each bullet point should be 6-12 words maximum for quick scanning.
+    3. Include ALL articles from the provided data - do not omit any articles.
+    4. Categorize each article into the most appropriate section.
+    5. If there are no relevant articles for a section, include 1-2 bullets with "No major updates this week" or similar.
+    6. Keep the emoji headers and section dividers exactly as shown.
+    7. Focus on generative AI in gaming and its impact on game development.
+    8. DO NOT include the HTML comments in the final output.
+    9. Maintain the footer text about thread and subscribe.
     """
     
     try:
-        # Call the Generative AI model
+        # Generate the newsletter using the LLM
         model = genai.GenerativeModel(DEFAULT_MODEL)
         response = model.generate_content(prompt)
         
-        # Extract the formatted newsletter
-        newsletter_content = response.text.strip()
+        # Get the generated newsletter
+        newsletter = response.text
         
-        # Store the newsletter in state
-        tool_context.state["llm_newsletter"] = newsletter_content
+        # Store the newsletter in the context
+        tool_context.state["llm_newsletter"] = newsletter
         
         return {
             "action": "generate_newsletter_with_llm",
             "status": "success",
-            "content": newsletter_content[:500] + "..." if len(newsletter_content) > 500 else newsletter_content,
-            "message": "Generated complete newsletter with LLM formatting."
+            "message": "Generated newsletter with LLM",
+            "newsletter": newsletter
         }
-        
     except Exception as e:
-        print(f"Error in LLM newsletter generation: {str(e)}")
         return {
             "action": "generate_newsletter_with_llm",
             "status": "error",

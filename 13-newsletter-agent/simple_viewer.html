@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Newsletter Viewer</title>
+    <title>AI & Gaming Newsletter</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -12,11 +12,36 @@
             max-width: 900px;
             margin: 0 auto;
             padding: 20px;
+            background-color: #f9f9f9;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
         }
         h1 {
             color: #1E88E5;
-            border-bottom: 2px solid #1E88E5;
-            padding-bottom: 10px;
+            margin: 0;
+        }
+        .close-button {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .close-button:hover {
+            background-color: #d32f2f;
+        }
+        .content-container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 30px;
+            margin-bottom: 20px;
         }
         h2 {
             color: #7E57C2;
@@ -73,50 +98,166 @@
         .button-secondary:hover {
             background-color: #0b7dda;
         }
+        .tabs {
+            overflow: hidden;
+            border: 1px solid #ccc;
+            background-color: #f1f1f1;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .tab-button {
+            background-color: inherit;
+            float: left;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            padding: 14px 16px;
+            transition: 0.3s;
+            font-size: 16px;
+            color: #333;
+        }
+        .tab-button:hover {
+            background-color: #ddd;
+        }
+        .tab-button.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+            padding: 6px 12px;
+            border: 1px solid #ccc;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            animation: fadeEffect 1s;
+        }
+        @keyframes fadeEffect {
+            from {opacity: 0;}
+            to {opacity: 1;}
+        }
+        .source-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .source-item {
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .source-item:hover {
+            background-color: #f9f9f9;
+        }
+        .source-url {
+            flex-grow: 1;
+            margin-right: 10px;
+            word-break: break-all;
+        }
+        .source-actions {
+            display: flex;
+            gap: 5px;
+        }
     </style>
 </head>
 <body>
-    <h1>AI & Gaming Newsletter Viewer 🤖🎮</h1>
-    
-    <div>
-        <p>Paste your newsletter markdown content below or load the latest newsletter:</p>
-        <button onclick="loadLatestNewsletter()">Load Latest Newsletter</button>
-        <button class="button-secondary" onclick="clearContent()">Clear Content</button>
+    <div class="header">
+        <h1>AI & Gaming Newsletter 🤖🎮</h1>
+        <button class="close-button" onclick="window.close()">Exit</button>
     </div>
     
-    <textarea id="markdown-input" placeholder="Paste your newsletter markdown here..."></textarea>
+    <div class="content-container">
+        <div style="margin-bottom: 20px;">
+            <p>Select a newsletter to view or load the latest:</p>
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <select id="newsletter-selector" style="flex-grow: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                    <option value="">-- Select a newsletter --</option>
+                    <option value="newsletter_rated_20250508.md">Latest Newsletter (May 8, 2025)</option>
+                    <option value="newsletter_rated_20250501.md">Previous Newsletter (May 1, 2025)</option>
+                    <option value="newsletter_rated_20250424.md">Previous Newsletter (April 24, 2025)</option>
+                </select>
+                <button onclick="loadSelectedNewsletter()" class="button-secondary">View Selected</button>
+                <button onclick="loadLatestNewsletter()">Load Latest</button>
+            </div>
+        </div>
+        
+        <div class="newsletter-content" id="newsletter-content">
+            <!-- Rendered content will appear here -->
+            <p style="text-align: center; color: #666; margin-top: 40px;">Select a newsletter to view or click "Load Latest" to see the most recent newsletter.</p>
+        </div>
+    </div>
     
-    <button onclick="renderMarkdown()">Render Newsletter</button>
-    
-    <div class="newsletter-content" id="newsletter-content">
-        <!-- Rendered content will appear here -->
+    <div class="content-container">
+        <h3>Generate New Newsletter</h3>
+        <p>To generate a new newsletter with the latest content:</p>
+        <ol>
+            <li>Open Terminal</li>
+            <li>Navigate to the newsletter directory</li>
+            <li>Run: <code>python rated_newsletter_test.py</code></li>
+            <li>Click "Load Latest" above when complete</li>
+        </ol>
+        <button onclick="window.location.reload()" class="button-secondary">Refresh Page</button>
     </div>
 
     <script>
-        // Function to render markdown content
-        function renderMarkdown() {
-            const markdownInput = document.getElementById('markdown-input').value;
-            if (!markdownInput.trim()) {
-                alert('Please enter some markdown content first.');
+        // Function to load the selected newsletter
+        function loadSelectedNewsletter() {
+            const selector = document.getElementById('newsletter-selector');
+            const selectedFile = selector.value;
+            
+            if (!selectedFile) {
+                alert('Please select a newsletter first.');
                 return;
             }
             
-            // Convert markdown to HTML
-            const html = convertMarkdownToHtml(markdownInput);
-            
-            // Display the content
-            document.getElementById('newsletter-content').innerHTML = html;
+            loadNewsletter(selectedFile);
         }
         
-        // Function to clear content
-        function clearContent() {
-            document.getElementById('markdown-input').value = '';
-            document.getElementById('newsletter-content').innerHTML = '';
+        // Function to load a newsletter file
+        function loadNewsletter(filePath) {
+            const contentElement = document.getElementById('newsletter-content');
+            contentElement.innerHTML = '<p style="text-align: center;">Loading newsletter...</p>';
+            
+            // Add cache-busting parameter
+            const cacheBuster = `?t=${new Date().getTime()}`;
+            
+            fetch(filePath + cacheBuster)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Failed to load newsletter (${response.status})`);
+                    }
+                    return response.text();
+                })
+                .then(content => {
+                    if (content.length === 0) {
+                        contentElement.innerHTML = '<p>The newsletter file is empty.</p>';
+                        return;
+                    }
+                    
+                    // Convert markdown to HTML
+                    const html = convertMarkdownToHtml(content);
+                    contentElement.innerHTML = html;
+                    console.log('Newsletter loaded successfully');
+                })
+                .catch(error => {
+                    console.error('Error loading newsletter:', error);
+                    contentElement.innerHTML = `<p>Error loading newsletter: ${error.message}</p>`;
+                    
+                    // Try loading the hardcoded content as fallback
+                    loadHardcodedNewsletter();
+                });
         }
         
         // Function to load the latest newsletter
         function loadLatestNewsletter() {
-            // Load the hardcoded latest newsletter
+            // Try to load the latest newsletter file
+            loadNewsletter('newsletter_rated_20250508.md');
+        }
+        
+        // Function to load hardcoded newsletter as fallback
+        function loadHardcodedNewsletter() {
             const latestNewsletter = `# This Week in Generative AI 🤖 and Gaming 🎮
 2025-05-08
 
@@ -228,8 +369,205 @@ Generative Models, Player Experience, Game Development, Npc Behavior, Security E
             return html;
         }
         
-        // Load the latest newsletter when the page loads
-        window.onload = loadLatestNewsletter;
+        // Function to load sources from rss_feeds.json
+        function loadSources() {
+            const sourceList = document.getElementById('source-list');
+            sourceList.innerHTML = '<li class="source-item">Loading sources...</li>';
+            
+            // Try to load the sources file
+            fetch('rss_feeds.json')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Could not load sources file');
+                    }
+                    return response.json();
+                })
+                .then(sources => {
+                    if (sources && sources.length > 0) {
+                        sourceList.innerHTML = '';
+                        sources.forEach((source, index) => {
+                            const li = document.createElement('li');
+                            li.className = 'source-item';
+                            
+                            // Try to extract domain for display
+                            let displayUrl = source;
+                            try {
+                                const url = new URL(source);
+                                displayUrl = url.hostname;
+                            } catch (e) {
+                                // Use the full URL if parsing fails
+                            }
+                            
+                            li.innerHTML = `
+                                <div class="source-url">${displayUrl}</div>
+                                <div class="source-actions">
+                                    <a href="${source}" target="_blank" class="button-secondary" style="padding: 5px 10px; font-size: 12px;">Visit</a>
+                                    <button onclick="removeSource(${index})" style="background-color: #f44336; padding: 5px 10px; font-size: 12px;">Remove</button>
+                                </div>
+                            `;
+                            sourceList.appendChild(li);
+                        });
+                    } else {
+                        sourceList.innerHTML = '<li class="source-item">No sources found. Add some sources or run discovery.</li>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading sources:', error);
+                    sourceList.innerHTML = `<li class="source-item">Error loading sources: ${error.message}. You may need to run discovery first.</li>`;
+                });
+        }
+        
+        // Function to add a new source
+        function addSource() {
+            const newSourceInput = document.getElementById('new-source-url');
+            const sourceUrl = newSourceInput.value.trim();
+            
+            if (!sourceUrl) {
+                alert('Please enter a valid URL');
+                return;
+            }
+            
+            // Validate URL format
+            try {
+                new URL(sourceUrl);
+            } catch (e) {
+                alert('Please enter a valid URL including http:// or https://');
+                return;
+            }
+            
+            // Load current sources
+            fetch('rss_feeds.json')
+                .then(response => {
+                    if (!response.ok) {
+                        // If file doesn't exist, create new array
+                        return [];
+                    }
+                    return response.json();
+                })
+                .catch(() => [])
+                .then(sources => {
+                    // Check if source already exists
+                    if (sources.includes(sourceUrl)) {
+                        alert('This source is already in your list');
+                        return;
+                    }
+                    
+                    // Add new source
+                    sources.push(sourceUrl);
+                    
+                    // Save updated sources
+                    return fetch('save_source.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ sources: sources })
+                    });
+                })
+                .then(response => {
+                    if (!response || !response.ok) {
+                        throw new Error('Could not save source');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        alert('Source added successfully!');
+                        newSourceInput.value = '';
+                        loadSources();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error adding source:', error);
+                    alert('Error adding source. You may need to run the source discovery script directly.');
+                });
+        }
+        
+        // Function to remove a source
+        function removeSource(index) {
+            if (!confirm('Are you sure you want to remove this source?')) {
+                return;
+            }
+            
+            // Load current sources
+            fetch('rss_feeds.json')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Could not load sources');
+                    }
+                    return response.json();
+                })
+                .then(sources => {
+                    // Remove the source at the specified index
+                    sources.splice(index, 1);
+                    
+                    // Save updated sources
+                    return fetch('save_source.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ sources: sources })
+                    });
+                })
+                .then(response => {
+                    if (!response || !response.ok) {
+                        throw new Error('Could not save changes');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        alert('Source removed successfully!');
+                        loadSources();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error removing source:', error);
+                    alert('Error removing source. You may need to edit the rss_feeds.json file directly.');
+                });
+        }
+        
+        // Function to run source discovery
+        function runSourceDiscovery() {
+            if (!confirm('This will run the source discovery agent to find new content sources. Continue?')) {
+                return;
+            }
+            
+            const sourceList = document.getElementById('source-list');
+            sourceList.innerHTML = '<li class="source-item">Running source discovery... This may take a few minutes.</li>';
+            
+            fetch('run_discovery.php')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Could not run discovery');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        alert('Source discovery completed successfully!');
+                        loadSources();
+                    } else {
+                        alert('Error: ' + data.message);
+                        sourceList.innerHTML = `<li class="source-item">Error running discovery: ${data.message}</li>`;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error running discovery:', error);
+                    alert('Error running source discovery. You may need to run the discover_sources.py script directly.');
+                    sourceList.innerHTML = `<li class="source-item">Error running discovery: ${error.message}</li>`;
+                });
+        }
+        
+        // Initialize when the page loads
+        window.onload = function() {
+            loadLatestNewsletter();
+        };
     </script>
 </body>
 </html>

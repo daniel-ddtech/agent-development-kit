@@ -152,36 +152,42 @@ def rate_articles(tool_context: ToolContext) -> dict:
     
     # First, ensure all articles in categorized_articles have ratings
     # We need to update the articles in the categorized_articles with their ratings
-    categorized_articles = tool_context.state.get("categorized_articles", {})
+    categorized_articles = tool_context.state.get("categorized_articles", [])
     
     # Create a lookup dictionary for quick access to rated articles by URL
     rated_lookup = {article.get("url"): article for article in rated_articles if article.get("url")}
     
-    # Update articles in each category with their ratings
-    for cat_id, category in categorized_articles.items():
-        updated_articles = []
-        for article in category.get("articles", []):
-            url = article.get("url")
-            if url and url in rated_lookup:
-                # Copy ratings from the rated article to this article
-                article["ratings"] = rated_lookup[url].get("ratings", {})
-            updated_articles.append(article)
-        category["articles"] = updated_articles
+    # Update articles with their ratings
+    updated_articles = []
+    for article in categorized_articles:
+        url = article.get("url")
+        if url and url in rated_lookup:
+            # Copy ratings from the rated article to this article
+            article["ratings"] = rated_lookup[url].get("ratings", {})
+        updated_articles.append(article)
     
-    # Store updated categorized articles
-    tool_context.state["categorized_articles"] = categorized_articles
+    # Store the updated articles back
+    tool_context.state["categorized_articles"] = updated_articles
     
     # Now calculate average ratings by category
     category_ratings = {}
     
-    for cat_id, category in categorized_articles.items():
-        cat_articles = category.get("articles", [])
+    # Group articles by category
+    articles_by_category = {}
+    for article in updated_articles:
+        for category in article.get("categories", []):
+            if category not in articles_by_category:
+                articles_by_category[category] = []
+            articles_by_category[category].append(article)
+    
+    # Calculate average rating for each category
+    for category, cat_articles in articles_by_category.items():
         if cat_articles:
             # Filter articles that have ratings
             rated_cat_articles = [a for a in cat_articles if "ratings" in a]
             if rated_cat_articles:
                 avg_scores = [a["ratings"].get("average_score", 0) for a in rated_cat_articles]
-                category_ratings[category["title"]] = round(sum(avg_scores) / len(avg_scores), 1)
+                category_ratings[category] = round(sum(avg_scores) / len(avg_scores), 1)
     
     # Store category ratings in state
     tool_context.state["category_ratings"] = category_ratings

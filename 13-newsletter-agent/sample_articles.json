@@ -1,0 +1,82 @@
+[
+  {
+    "title": "AI-Powered NPCs Are Revolutionizing Game Development",
+    "link": "https://example.com/article1",
+    "published": "2025-05-06T14:06:50.068997",
+    "summary": "Game developers are using generative AI to create more realistic and responsive NPCs.",
+    "source": "gamedeveloper",
+    "source_title": "Game Developer"
+  },
+  {
+    "title": "Unity Announces New AI Tools for Game Developers",
+    "link": "https://example.com/article2",
+    "published": "2025-05-05T14:06:50.069008",
+    "summary": "Unity has released a new suite of AI tools to help game developers create more immersive experiences.",
+    "source": "gamedeveloper",
+    "source_title": "Game Developer"
+  },
+  {
+    "title": "Procedural Generation Gets a Boost from New AI Models",
+    "link": "https://example.com/article3",
+    "published": "2025-05-07T14:06:50.069010",
+    "summary": "New AI models are making procedural generation more powerful and accessible for game developers.",
+    "source": "gamedeveloper",
+    "source_title": "Game Developer"
+  },
+  {
+    "title": "The Ethics of AI in Gaming: A Deep Dive",
+    "link": "https://example.com/article4",
+    "published": "2025-05-04T14:06:50.069012",
+    "summary": "Exploring the ethical considerations of using AI in gaming, from player privacy to algorithmic bias.",
+    "source": "gamedeveloper",
+    "source_title": "Game Developer"
+  },
+  {
+    "title": "How AI is Changing Game Testing and QA",
+    "link": "https://example.com/article5",
+    "published": "2025-05-06T14:06:50.069013",
+    "summary": "AI-powered testing tools are revolutionizing how games are tested and debugged.",
+    "source": "gamedeveloper",
+    "source_title": "Game Developer"
+  },
+  {
+    "title": "Google Announces New Generative AI Features",
+    "link": "https://example.com/article6",
+    "published": "2025-05-03T14:06:50.069014",
+    "summary": "Google has unveiled new generative AI features for developers and consumers.",
+    "source": "techcrunch",
+    "source_title": "TechCrunch"
+  },
+  {
+    "title": "The Rise of AI Voice Actors in Games",
+    "link": "https://example.com/article7",
+    "published": "2025-05-05T14:06:50.069016",
+    "summary": "Game studios are increasingly using AI-generated voices for characters in their games.",
+    "source": "GamesBeat News | VentureBeat",
+    "source_title": "GamesBeat"
+  },
+  {
+    "title": "AI Art Tools Finding Their Way Into Game Asset Creation",
+    "link": "https://example.com/article8",
+    "published": "2025-05-06T14:06:50.069018",
+    "summary": "Game artists are incorporating AI art generation tools into their workflows.",
+    "source": "GamesBeat News | VentureBeat",
+    "source_title": "GamesBeat"
+  },
+  {
+    "title": "Funding Round: AI Gaming Startup Raises $50M",
+    "link": "https://example.com/article9",
+    "published": "2025-05-07T14:06:50.069019",
+    "summary": "A startup focused on AI for gaming has raised $50 million in Series B funding.",
+    "source": "GamesBeat News | VentureBeat",
+    "source_title": "GamesBeat"
+  },
+  {
+    "title": "OpenAI's Latest Model Shows Promise for Game Dialogue",
+    "link": "https://example.com/article10",
+    "published": "2025-05-04T14:06:50.069023",
+    "summary": "OpenAI's newest model is being tested for creating dynamic game dialogue systems.",
+    "source": "gamedeveloper",
+    "source_title": "Game Developer"
+  }
+]
