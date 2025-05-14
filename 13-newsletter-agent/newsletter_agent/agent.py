@@ -12,10 +12,14 @@ from .rss_tools import fetch_rss_articles, manage_feeds
 from .curator_tools import curate_articles, get_trending_topics
 from .summarizer_tools import summarize_articles, generate_intro
 from .formatter_tools import format_newsletter
+from .perplexity_tools import fetch_perplexity_articles
+from .spreadsheet_tools import fetch_spreadsheet_articles
 
 
+# Note: The mock fetch_feedly_articles function has been replaced by the Perplexity API implementation
+# We're keeping the function name the same for backward compatibility
 def fetch_feedly_articles(query: str, days: int, tool_context: ToolContext) -> dict:
-    """Fetch recent articles from Feedly based on a query.
+    """Fetch recent articles using Perplexity API (replacing Feedly mock).
     
     Args:
         query: The search query (e.g., "AI in games")
@@ -26,62 +30,22 @@ def fetch_feedly_articles(query: str, days: int, tool_context: ToolContext) -> d
         A dictionary with fetched articles
     """
     print(f"--- Tool: fetch_feedly_articles called for '{query}' (last {days} days) ---")
+    print("Note: This function now uses Perplexity API instead of Feedly")
     
-    # Get current articles from state or initialize empty list
-    articles = tool_context.state.get("articles", [])
-    feedly_articles = tool_context.state.get("feedly_articles", [])
+    # Use the Perplexity implementation with a modified query
+    result = fetch_perplexity_articles(f"{query} latest news", days, tool_context)
     
-    # In a real implementation, you would use the Feedly API here
-    # This is a placeholder implementation
-    # Example: https://developer.feedly.com/v3/search/
+    # Rename the action for backward compatibility
+    if "action" in result:
+        result["action"] = "fetch_feedly_articles"
     
-    # Mock fetching articles from Feedly
-    # In production, replace with actual API call
-    mock_feedly_articles = [
-        {
-            "id": "feedly_1",
-            "title": f"[FEEDLY] New AI Game Development Techniques - {datetime.now().strftime('%Y-%m-%d')}",
-            "url": "https://example.com/ai-game-dev",
-            "published": datetime.now().strftime("%Y-%m-%d"),
-            "source": "Feedly",
-            "summary": "Recent advancements in AI for game development..."
-        },
-        {
-            "id": "feedly_2",
-            "title": f"[FEEDLY] Machine Learning in Gaming - {datetime.now().strftime('%Y-%m-%d')}",
-            "url": "https://example.com/ml-gaming",
-            "published": datetime.now().strftime("%Y-%m-%d"),
-            "source": "Feedly",
-            "summary": "How machine learning is transforming gaming experiences..."
-        }
-    ]
-    
-    # Store the fetched articles in state
-    feedly_articles = mock_feedly_articles
-    tool_context.state["feedly_articles"] = feedly_articles
-    
-    # Merge with existing articles (avoiding duplicates by ID)
-    existing_ids = {article["id"] for article in articles}
-    for article in feedly_articles:
-        if article["id"] not in existing_ids:
-            articles.append(article)
-            existing_ids.add(article["id"])
-    
-    # Update the combined articles in state
-    tool_context.state["articles"] = articles
-    
-    return {
-        "action": "fetch_feedly_articles",
-        "query": query,
-        "days": days,
-        "articles_found": len(feedly_articles),
-        "total_articles": len(articles),
-        "message": f"Found {len(feedly_articles)} articles from Feedly for '{query}' in the last {days} days."
-    }
+    return result
 
 
+# Note: The mock fetch_google_articles function has been replaced by the Perplexity API implementation
+# We're keeping the function name the same for backward compatibility
 def fetch_google_articles(query: str, days: int, tool_context: ToolContext) -> dict:
-    """Fetch recent articles from Google Search based on a query.
+    """Fetch recent articles using Perplexity API (replacing Google Search mock).
     
     Args:
         query: The search query (e.g., "AI in games")
@@ -92,58 +56,16 @@ def fetch_google_articles(query: str, days: int, tool_context: ToolContext) -> d
         A dictionary with fetched articles
     """
     print(f"--- Tool: fetch_google_articles called for '{query}' (last {days} days) ---")
+    print("Note: This function now uses Perplexity API instead of Google Search")
     
-    # Get current articles from state or initialize empty list
-    articles = tool_context.state.get("articles", [])
-    google_articles = tool_context.state.get("google_articles", [])
+    # Use the Perplexity implementation with a modified query to get different results
+    result = fetch_perplexity_articles(f"{query} research articles", days, tool_context)
     
-    # In a real implementation, you would use the Google Custom Search API here
-    # This is a placeholder implementation
-    # Example: https://developers.google.com/custom-search/v1/overview
+    # Rename the action for backward compatibility
+    if "action" in result:
+        result["action"] = "fetch_google_articles"
     
-    # Mock fetching articles from Google
-    # In production, replace with actual API call
-    mock_google_articles = [
-        {
-            "id": "google_1",
-            "title": f"[GOOGLE] AI Revolution in Gaming Industry - {datetime.now().strftime('%Y-%m-%d')}",
-            "url": "https://example.com/ai-revolution-gaming",
-            "published": datetime.now().strftime("%Y-%m-%d"),
-            "source": "Google Search",
-            "summary": "The gaming industry is experiencing an AI revolution..."
-        },
-        {
-            "id": "google_2",
-            "title": f"[GOOGLE] Procedural Generation with AI - {datetime.now().strftime('%Y-%m-%d')}",
-            "url": "https://example.com/procedural-ai",
-            "published": datetime.now().strftime("%Y-%m-%d"),
-            "source": "Google Search",
-            "summary": "How AI is enabling more sophisticated procedural generation in games..."
-        }
-    ]
-    
-    # Store the fetched articles in state
-    google_articles = mock_google_articles
-    tool_context.state["google_articles"] = google_articles
-    
-    # Merge with existing articles (avoiding duplicates by ID)
-    existing_ids = {article["id"] for article in articles}
-    for article in google_articles:
-        if article["id"] not in existing_ids:
-            articles.append(article)
-            existing_ids.add(article["id"])
-    
-    # Update the combined articles in state
-    tool_context.state["articles"] = articles
-    
-    return {
-        "action": "fetch_google_articles",
-        "query": query,
-        "days": days,
-        "articles_found": len(google_articles),
-        "total_articles": len(articles),
-        "message": f"Found {len(google_articles)} articles from Google for '{query}' in the last {days} days."
-    }
+    return result
 
 
 def view_articles(tool_context: ToolContext) -> dict:
@@ -377,14 +299,14 @@ newsletter_agent = Agent(
     
     You have the following capabilities:
     1. Manage RSS feeds to track (add, remove, list)
-    2. Fetch articles from RSS feeds and Google Search
+    2. Fetch articles from RSS feeds, Perplexity search, and Google Spreadsheets
     3. Filter and rank articles by relevance
     4. Generate concise summaries in a consistent tone
     5. Format the newsletter for different platforms (markdown, HTML, JSON)
     
     When the user wants to create a newsletter, guide them through the process:
     1. First make sure there are RSS feeds configured using manage_feeds
-    2. Fetch articles using fetch_rss_articles and fetch_google_articles
+    2. Fetch articles using fetch_rss_articles, fetch_perplexity_articles, and fetch_spreadsheet_articles
     3. Curate the most relevant articles using curate_articles
     4. Generate summaries with summarize_articles and an introduction with generate_intro
     5. Format the newsletter using format_newsletter
@@ -395,7 +317,9 @@ newsletter_agent = Agent(
         # Source tools
         manage_feeds,
         fetch_rss_articles,
-        fetch_google_articles,
+        fetch_google_articles,  # Now uses Perplexity API
+        fetch_perplexity_articles,
+        fetch_spreadsheet_articles,
         
         # Curator tools
         curate_articles,
